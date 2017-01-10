@@ -31,8 +31,7 @@ This should be used like this:
     </Plugin>
 
 Only the configuration keys exposed in the example are valid. Their
-default values are the ones in the example. Currently, only IPv4 is
-handled.
+default values are the ones in the example.
 
 ## BIRD configuration
 
