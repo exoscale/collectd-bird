@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+
+DISTRIBUTION = $(shell lsb_release -sc)
+VERSION ?= $(shell git describe --tags --always --match 'v[0-9]*' 2> /dev/null || date +v0~%F)
+DEBVERSION = $(VERSION)-0~$(DISTRIBUTION)0
+
+%:
+	dh $@
+
+override_dh_gencontrol:
+	dh_gencontrol -- -$(DEBVERSION)

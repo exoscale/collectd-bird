@@ -1,0 +1,5 @@
+collectd-bird (0-0) UNRELEASED; urgency=medium
+
+  * Fake entry.
+
+ -- Vincent Bernat <bernat@debian.org>  Tue, 10 Jan 2017 18:08:54 +0100

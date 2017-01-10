@@ -1,0 +1,9 @@
+Source: collectd-bird
+Maintainer: Vincent Bernat <bernat@debian.org>
+Build-Depends: debhelper (>= 9),
+               lsb-release
+
+Package: collectd-bird
+Architecture: all
+Depends: collectd-core
+Description: plugin to collect metrics from BIRD
