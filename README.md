@@ -43,7 +43,6 @@ proper dates from BIRD:
 
 # Testing
 
-You can also launch the script manually. It will collect the values
-and display what would have been reported to collectd.
+A one-time collection can be triggered with:
 
-
+    collectd -C collectd.conf -T

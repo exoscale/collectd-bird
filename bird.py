@@ -10,7 +10,7 @@ import re
 from datetime import datetime
 import time
 import socket
-import logging
+import collectd
 
 
 def uptime(since):
@@ -118,7 +118,7 @@ class Bird(object):
             return {}
 
         tables = [re.split(r'\s+', v)[0] for v in data]
-        logger.debug("routes: routing tables: {}".format(tables))
+        collectd.debug("routes: routing tables: {}".format(tables))
 
         results = {}
         for t in tables:
@@ -148,7 +148,7 @@ class Bird(object):
             if mo:
                 if mo.group("protocol") == "BGP":
                     name = mo.group("name")
-                    logger.debug("bgp: BGP protocol {} found".format(name))
+                    collectd.debug("bgp: BGP protocol {} found".format(name))
                     current = dict(uptime=uptime(mo.group("since")))
                     results[name] = current
                     s = 1
@@ -182,8 +182,8 @@ class Bird(object):
         return results
 
     def _query(self, query, codes):
-        logger.debug("query: connecting to BIRD with "
-                     "socket {}".format(self.socket))
+        collectd.debug("query: connecting to BIRD with "
+                       "socket {}".format(self.socket))
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.connect(self.socket)
         if sys.version_info >= (3, 0):
@@ -191,20 +191,20 @@ class Bird(object):
         else:
             sock = sock.makefile()
 
-        logger.debug("query: wait for banner")
+        collectd.debug("query: wait for banner")
         line = sock.readline()
         if not line.startswith("0001 "):
             raise RuntimeError("query: expected a banner")
 
-        logger.debug("query: switch to restricted mode")
+        collectd.debug("query: switch to restricted mode")
         sock.write("restrict\n")
         sock.flush()
         line = sock.readline()
         if not line.startswith("0016 "):
-            logger.debug("query: cannot switch to restricted mode")
+            collectd.debug("query: cannot switch to restricted mode")
 
         # Send the query
-        logger.debug("query: send {}".format(query))
+        collectd.debug("query: send {}".format(query))
         sock.write("{}\n".format(query))
         sock.flush()
 
@@ -216,7 +216,7 @@ class Bird(object):
             line = line.rstrip()
             if line == "":
                 continue
-            logger.debug("query: got {}".format(line))
+            collectd.debug("query: got {}".format(line))
             if line == "0000":
                 break
             if line.startswith(" "):
@@ -237,9 +237,6 @@ class BirdCollectd(object):
 
     socket = "/var/run/bird/bird.ctl"
     instance = "v4"
-
-    def __init__(self, dispatcher):
-        self._dispatch = dispatcher
 
     def configure(self, conf, **kwargs):
 
@@ -272,11 +269,12 @@ class BirdCollectd(object):
         """Dispatch a value to collectd."""
         if values is None or any([v is None for v in values]):
             return
-        self._dispatch(values,
-                       plugin="bird",
-                       plugin_instance=self.instance,
-                       type=type,
-                       type_instance=type_instance)
+        metric = collectd.Values(values=values,
+                                 plugin="bird",
+                                 plugin_instance=self.instance,
+                                 type=type,
+                                 type_instance=type_instance)
+        metric.dispatch()
 
     def read(self):
         """Collectd read callback."""
@@ -318,57 +316,7 @@ class BirdCollectd(object):
                           "bird_bgp", p)
 
 
-logger = logging.getLogger("bird-collectd")
-logger.setLevel(logging.DEBUG)
-if __name__ == "__main__":
-    ch = logging.StreamHandler()
-    ch.setFormatter(logging.Formatter(
-        "%(levelname)s[%(name)s] %(message)s"))
-    logger.addHandler(ch)
-
-    # Run as a standalone executable
-    import argparse
-    parser = argparse.ArgumentParser(description="BIRD collector for collectd")
-    parser.add_argument("--socket", help="BIRD socket",
-                        default=BirdCollectd.socket,
-                        type=str)
-    parser.add_argument("--instance", help="Plugin instance",
-                        default=BirdCollectd.instance,
-                        type=str)
-    args = parser.parse_args()
-
-    def dispatcher(values, **kwargs):
-        attrs = ["{}={}".format(k, kwargs[k]) for k in kwargs]
-        attrs.append("values={}".format(values))
-        attrs.sort()
-        print(" ".join(attrs))
-
-    bird = BirdCollectd(dispatcher)
-    bird.configure(None, **vars(args))
-    bird.init()
-    bird.read()
-else:
-    # Run inside collectd
-    import collectd
-
-    class CollectdLogHandler(logging.StreamHandler):
-        def format(self, record):
-            message = logging.StreamHandler.format(self, record)
-            method = {logging.ERROR: collectd.error,
-                      logging.WARNING: collectd.warning,
-                      logging.INFO: collectd.info,
-                      logging.DEBUG: collectd.debug}.get(record.levelno,
-                                                         collectd.warning)
-            method(message)
-
-    logger.addHandler(CollectdLogHandler())
-
-    def dispatcher(values, **kwargs):
-        val = collectd.Values(values=values,
-                              **kwargs)
-        val.dispatch()
-
-    bird = BirdCollectd(dispatcher)
-    collectd.register_config(bird.configure)
-    collectd.register_init(bird.init)
-    collectd.register_read(bird.read)
+bird = BirdCollectd()
+collectd.register_config(bird.configure)
+collectd.register_init(bird.init)
+collectd.register_read(bird.read)
