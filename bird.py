@@ -233,7 +233,7 @@ class Bird(object):
         return data
 
 
-class BirdCollectd(object):
+class BirdCollectdInstance(object):
 
     socket = "/var/run/bird/bird.ctl"
     instance = "v4"
@@ -314,6 +314,30 @@ class BirdCollectd(object):
                            bgp[p].get("exported", 0),
                            bgp[p].get("preferred", 0)],
                           "bird_bgp", p)
+
+
+class BirdCollectd(object):
+
+    def __init__(self):
+        self.instances = []
+
+    def configure(self, conf, **kwargs):
+        print("hello")
+        for node in conf.children:
+            instance = BirdCollectdInstance()
+            instance.configure(node, **kwargs)
+            self.instances.append(instance)
+        print(self.instances)
+
+    def init(self):
+        if not self.instances:
+            self.instances = [BirdCollectdInstance()]
+        for instance in self.instances:
+            instance.init()
+
+    def read(self):
+        for instance in self.instances:
+            instance.read()
 
 
 bird = BirdCollectd()
