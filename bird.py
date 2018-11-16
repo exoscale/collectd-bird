@@ -208,9 +208,9 @@ class Bird(object):
         sock.write("{}\n".format(query))
         sock.flush()
 
-        # Parse the answer. We assume that we will always get data. We
-        # ignore the continuation rule but enforce the use of a single
-        # code.
+        # Parse the answer. We assume that we will always get data
+        # except when getting 9001. We ignore the continuation rule
+        # but enforce the use of a single code.
         data = []
         for line in sock:
             line = line.rstrip()
@@ -221,6 +221,9 @@ class Bird(object):
                 break
             if line.startswith(" "):
                 data.append(line[1:])
+            elif line == "9001 There is no BFD protocol running":
+                # 9001 is parse error, but is also used for this kind of error.
+                break
             elif ((line[:4] in codes or
                    line[:1] == "2" and
                    line[1:4] in [c[1:4] for c in codes]) and
