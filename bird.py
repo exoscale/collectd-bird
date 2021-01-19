@@ -187,7 +187,7 @@ class Bird(object):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.connect(self.socket)
         if sys.version_info >= (3, 0):
-            sock = sock.makefile(encoding='ascii')
+            sock = sock.makefile(encoding='ascii', mode='rw')
         else:
             sock = sock.makefile()
 
